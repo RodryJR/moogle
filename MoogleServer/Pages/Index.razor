@@ -10,7 +10,7 @@
 
 @if (!string.IsNullOrEmpty(result.Suggestion)) {
     <div class="suggestion">
-        <p>¿Quisite decir <strong><a href="#">@result.Suggestion</a></strong>?</p>
+        <p>¿Quisiste decir <strong><a href="#">@result.Suggestion</a></strong>?</p>
     </div>
 }
 
@@ -18,7 +18,7 @@
 @foreach (var item in result.Items()) {
     <li>
         <div class="item">
-            <p class="title">@item.Title</p>
+            <p class="title">@item.Title      @item.Score</p>
             <p>... @item.Snippet ...</p>
         </div>
     </li>
