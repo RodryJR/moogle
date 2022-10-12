@@ -74,39 +74,4 @@ public static class Ordenar
         }
         return c;       
     }
-    //ordena x los documentos x la menor distancia que hay entre las palabras del operador ~
-    public static Tuple<Document,int>[] Ordenacion(Tuple<Document,int>[] a,int start,int end){
-        if(start == end){
-            return a [start .. (end+1)];
-        }
-
-        Tuple<Document,int>[]b = Ordenacion(a,start,(start+end)/2);
-        Tuple<Document,int>[]c = Ordenacion(a,((start+end)/2)+1,end);
-        Tuple<Document,int>[]d=Mezclar(b,c);
-        return d;
-    }
-       public static Tuple<Document,int>[] Mezclar(Tuple<Document,int>[] a, Tuple<Document,int>[] b){
-
-        Tuple<Document,int>[] c = new Tuple<Document,int>[a.Length+b.Length];
-        int i = 0;
-        int j = 0;
-
-        for(int k = 0; k < c.Length; k++){
-
-            if((i < a.Length) && ( j < b.Length) && (a[i].Item2 <= b[j].Item2)){
-                c[k] = a[i];
-                i++;
-            }
-            else if (j < b.Length){
-                c[k] = b[j];
-                j++;
-            }
-            else{
-                c[k] = a[i];
-                i++;
-            }
-        }
-        return c;       
-    }
-
 }

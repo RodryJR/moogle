@@ -2,6 +2,17 @@ namespace MoogleEngine;
 
 public static class Words
 {
+    public static string[] ArrayWordsWithOperator(string query,bool operador)
+    {
+        if(operador)
+        {
+            string[] result=query.ToLower().Split(new char[19] {' ',';','/','#','[',']','{','}','¡','¿','-','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries);
+            return CleanWords(result,true);
+        }
+        string[] result2=query.ToLower().Split(new char[23] {' ','~','!','*','^',';','/','#','[',']','{','}','¡','¿','-','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries);
+        return CleanWords(result2,false);
+
+    }
     //elimina los caracteres raros de un array de palabras y devuelve las palabras sin caracteres raros
     public static string[] CleanWords(string[] words, bool operador){
 

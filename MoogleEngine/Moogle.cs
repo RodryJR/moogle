@@ -3,6 +3,8 @@
 public static class Moogle
 {
     public static float[] TF_IDF_Query{get;private set;}
+    public static float Sqrt_Query_score{get;private set;}
+    public static bool sugerencia{get; set;}
     public static bool operador_1{get; set;}
     public static bool operador_2{get; set;}
     public static bool operador_3{get;set;}
@@ -14,16 +16,19 @@ public static class Moogle
 
     public static SearchResult Query(string query)
     {
+        sugerencia=false;
+        string[] palabras_query = Words.ArrayWordsWithOperator(query,true);
+
         //en caso de que la query contenga un operador que lo marque como true y cargue las variables de los operadores
         if(query.Contains('!'))
         {
             operador_1=true;
-            Operadores.Operador1(query);
+            Operadores.Operador1(palabras_query);
         }
         if(query.Contains('^'))
         {
             operador_2=true;
-            Operadores.Operador2(query);
+            Operadores.Operador2(palabras_query);
         }
         if(query.Contains('~'))
         {
@@ -33,17 +38,22 @@ public static class Moogle
         if(query.Contains('*'))
         {
             operador_4=true;
-            Operadores.Operador4(query);
+            Operadores.Operador4(palabras_query);
         }
 
-        string[] palabras_query = query.ToLower().Split(new char[22] {' ','!','^','~','*',';','/','#','[',']','{','}','¡','¿','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries);
-        palabras_query = Words.CleanWords( palabras_query,false); 
-        float[] IDF = (float[])Preprocesamiento.IDF_vector.Clone();
+        palabras_query = Words.ArrayWordsWithOperator(query,false);
+
+        if(palabras_query.Length==0)
+        {
+            return new SearchResult(new SearchItem[0],"");
+        } 
+
+        float[] IDF = Preprocesamiento.IDF_vector;
         string[] palabras = Preprocesamiento.words;
         Dictionary <string,int> dic = Preprocesamiento.Diccionario;
         TF_IDF_Query = new float[palabras.Length];
-        float sqrt_query_score = 0;
-        Document[] documentos = Preprocesamiento.Doc_.CloneDocs();
+        Sqrt_Query_score=0;
+        Document[] documentos = Preprocesamiento.Doc_;
 
         for(int i=0;i<palabras_query.Length;i++)
         {   //itera x las palabras de la query y si una no existe la sustituye x la mas similar
@@ -55,99 +65,46 @@ public static class Moogle
         }
 
         string[] palabras_query_sinrep= Words.DeleteDuplicate(palabras_query);//elimina las palabras repetidas de la query
-        
-        if(operador_4){
-
-            float old_tfidf;
-            int pos;
-            //itera x las palabras afectadas x el operador *
-            for(int i =0; i < words_operador_4.Length; i++)
-            {   //modifica el peso del idf de la palabra afectada x el operador *
-                pos=dic[words_operador_4[i].Item1];
-                IDF[pos]=IDF[pos]*(2*words_operador_4[i].Item2);
-                
-                for(int j =0 ; j < documentos.Length; j++)
-                {
-                    if(documentos[j].Words_Text.Contains(words_operador_4[i].Item1))
-                    {   //itera x los documentos para rectificar los tfidf y la sumatoria de los valores tfidf al cuadrado
-                        old_tfidf= documentos[j].TF_IDF[pos];
-                        documentos[j].TF_IDF[pos]=documentos[j].TF_IDF[pos] * (2*words_operador_4[i].Item2);
-                        documentos[j].sqrt_doc_score += (float)Math.Pow(documentos[j].TF_IDF[pos],2) - (float)Math.Pow(old_tfidf,2);
-                    }
-                }
-            }
-            operador_4=false;
-        }
 
         //calcula el vector tfidf de la query y la sumatoria de los tfIdf al cuadrado del vector de la query
         for(int i=0;i<palabras_query_sinrep.Length;i++)
         {
             TF_IDF_Query[dic[palabras_query_sinrep[i]]]=IDF[dic[palabras_query_sinrep[i]]]*TF_IDF_Query[dic[palabras_query_sinrep[i]]];
-            sqrt_query_score+=(float)Math.Pow(TF_IDF_Query[dic[palabras_query_sinrep[i]]],2);
         }
 
         //organiza las palabras de la query sin repetir segun su peso tfidf
         palabras_query_sinrep=Ordenar.Organiza(palabras_query_sinrep,0,palabras_query_sinrep.Length-1);
 
-        //calcula los score de los documentos
+        bool ModificarSqrt_TFIDF_query=true;//para que nada mas calcule la sumatoria del cuadrado de los tfidf de la query y 
+        //q modifique una sola vez el vector de la query en caso del operador *
+
+        //calcula los score de los documentos  
         for(int i=0;i < documentos.Length;i++)
         {   //formula de similitud de coseno
-            documentos[i].Score = MultiplicarVectoresTfIdf(documentos[i].TF_IDF,TF_IDF_Query)/(float)Math.Sqrt(documentos[i].sqrt_doc_score * sqrt_query_score);
+            documentos[i].Score = CalcularScore((float[])documentos[i].TF_IDF.Clone(),ModificarSqrt_TFIDF_query);
+            ModificarSqrt_TFIDF_query=false;
         }
+        operador_4=false;
 
         if(operador_3)
         {   //itera x las palabras q hay q hallarle la cercania
-            for(int i = 0; i < words_operador_3.Count ;i++){
-
-                Tuple<Document,int>[] ContDistance = new Tuple<Document,int>[documentos.Length];
+            for(int i = 0; i < words_operador_3.Count ;i++)
+            {
+                int distance;
                 //itera x los documentos para hallar la menor distancia entre las palabras afectadas x el operador ~
-                for(int j=0;j < documentos.Length;j++){
+                for(int j=0;j < documentos.Length;j++)
+                {
+                    distance=Words.Words_Distance(documentos[j].Words_Text,words_operador_3[i]);
 
-                    ContDistance[j]=new Tuple<Document, int>(documentos[j],Words.Words_Distance(documentos[j].Words_Text,words_operador_3[i]));
-
-                }
-                //ordena los documentos en forma ascendente 
-                ContDistance=Ordenar.Ordenacion(ContDistance,0,ContDistance.Length-1);
-                bool[] pos=new bool[5];
-                //itera x los documentos y le suma el score en dependecia de la distancia entre las palabras afectadas x el operador
-                for(int k=0;k<ContDistance.Length;k++){
-
-                    if(ContDistance[k].Item2==-1)
-                    {   //si tiene distancia d -1 es xq no contiene a las palabras a la vez
+                    if(distance==-1)
+                    {
                         continue;
                     }
-                    else if(!pos[0])
-                    {   //posicion 1
-                        ContDistance[k].Item1.Score+=(float)0.25;
-                        pos[0]=true;
-                    }
-                    else if(!pos[1])
-                    {   //posicion 2
-                        ContDistance[k].Item1.Score+=(float)0.2;
-                        pos[1]=true;
-                    }
-                    else if(!pos[2])
-                    {   //posicion 3
-                        ContDistance[k].Item1.Score+=(float)0.15;
-                        pos[2]=true;
-                    }
-                    else if(!pos[3])
-                    {   //posicion 4
-                        ContDistance[k].Item1.Score+=(float)0.1;
-                        pos[3]=true;
-                    }
-                    else
-                    {   //a partir de la posicion 5
-                        ContDistance[k].Item1.Score+=(float)0.05;
-                    }
+                    documentos[j].Score += (1/(float)distance);
                 }
-                
-                
             }
             operador_3=false;
         }
-
-        
 
         if(operador_1)
         {   //itera x las palabras q son modificadas x el operador !
@@ -191,51 +148,85 @@ public static class Moogle
                 documentos[i].Score += (float)0.25;
             }
             //hallando el snippet de cada documento
-            documentos[i].Principal_Snippet=CrearSnippet(documentos[i].Snippet,palabras_query_sinrep);
-            if(documentos[i].Principal_Snippet==""){
-                documentos[i].Principal_Snippet=documentos[i].Text[0 .. 200];
-            }
-
+            documentos[i].Snippet=CrearSnippet(documentos[i].Text,palabras_query_sinrep);
         }
 
         SearchItem[] items = new SearchItem[documentos.Length];
-        int score0=-1;
+        int score0 = documentos.Length;
         for(int i=0;i<documentos.Length;i++){
-            if(documentos[i].Score==0 && score0==-1){
+            if(documentos[i].Score == 0 ){
                 score0=i;
+                break;
             }
-            items[i]= new SearchItem(documentos[i].Title,documentos[i].Principal_Snippet,documentos[i].Score);
+            items[i]= new SearchItem(documentos[i].Title,documentos[i].Snippet,documentos[i].Score);
         }
 
         return new SearchResult(items[0 .. score0], Sugerencia.ConstSuggestion(palabras_query));
     }
     //multiplica los vectore tfidf de los documentos con el de la query y devuelve la sumatoria de la multiplicacion
-    public static float MultiplicarVectoresTfIdf(float[] doc,float[]que){
+    public static float MultiplicarVectoresTfIdf(float[] doc,float[]que)
+    {
         float resultado=0;
 
-        for(int i = 0; i < doc.Length; i++){
-            resultado+=doc[i]*que[i];
+        for(int i = 0; i < doc.Length; i++)
+        {
+            resultado += doc[i]*que[i];
         }
 
         return resultado;
     }
-    //crea los snippet segun la palabra con mayor tfidf de la query
-    public static string CrearSnippet(Snippet[] a,string[] que){
 
+    public static float CalcularScore(float[] tf_idf_document,bool ModificarSqrt_TFIDF_query)
+    {
+        float sqrt_document = 0;
+
+        if(operador_4)
+        {
+            int pos;
+            for(int i=0;i < words_operador_4.Length;i++)
+            {
+                pos=Preprocesamiento.Diccionario[words_operador_4[i].Item1];
+                tf_idf_document[pos] = tf_idf_document[pos] *((float)(2 * words_operador_4[i].Item2 ));
+                if(!ModificarSqrt_TFIDF_query) { continue; }
+                TF_IDF_Query[pos] = TF_IDF_Query[pos] * ((float)(2 * words_operador_4[i].Item2 ));
+            }
+        }
+        for(int i =0; i < tf_idf_document.Length;i++)
+        {
+            if(tf_idf_document[i]!=0){ sqrt_document+=(float)Math.Pow(tf_idf_document[i],2); }
+            if(!ModificarSqrt_TFIDF_query) { continue; }
+            if(TF_IDF_Query[i]!=0){ Sqrt_Query_score+=(float)Math.Pow(TF_IDF_Query[i],2); }
+        }
+        return (MultiplicarVectoresTfIdf(tf_idf_document,TF_IDF_Query)/(float)Math.Sqrt((float)(sqrt_document*Sqrt_Query_score)));
+    }
+    //crea los snippet segun la palabra con mayor tfidf de la query
+    public static string CrearSnippet(string text,string[] que){
+        int pos;
         string result="";
+        string textaux=text.ToLower();
 
         for(int i=0;i<que.Length;i++)
         {   //itera x las palabras de mayor tfidf de la query y comprueba si tiene algun snippet esta palabra para ser devuelto
-            for(int j =0;j<a.Length;j++)
+            pos=textaux.IndexOf(que[i]);
+            if(pos!=(-1))
             {
-                if(a[j].Words_Snippet.Contains(que[i]))
+                if((pos-100>=0)&&(pos+100<text.Length))
                 {
-                    return a[j].Text_Snippet;
+                    return text[(pos-100) .. (pos+100)];
+                }
+                else if(pos-100>=0)
+                {
+                    return text[(pos-100) .. (text.Length)];
+                }
+                else if(pos+100<=text.Length){
+                    return text[0 .. (pos+100)];
+                }
+                else{
+                    return text;
                 }
             }
         }
-        
-        return result;
+        return result;   
     }
 
 }

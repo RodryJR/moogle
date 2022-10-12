@@ -2,17 +2,15 @@ namespace MoogleEngine;
 
 public static class Operadores
 {
-    public static void Operador1(string query)
+    public static void Operador1(string[] palabras_query)
     {
-        //separa las palabras de la query y solo del deja el ! con las palabras
-        string[] palabras_query = query.ToLower().Split(new char[21] {' ','^','~','*',';','/','#','[',']','{','}','¡','¿','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries);
-        palabras_query = Words.CleanWords(palabras_query,true);
         string[] word_operador_1=new string [palabras_query.Length];
         int count=0;
 
-        for(int i =0;i < palabras_query.Length;i++){
-
-            if(palabras_query[i][0]=='!'){
+        for(int i =0;i < palabras_query.Length;i++)
+        {
+            if(palabras_query[i][0]=='!')
+            {
                 //construye las palabras q no deben aparecer en los documentos quitando el caracter!
                 palabras_query[i]=Words.ConstWord(palabras_query[i],false);
 
@@ -40,15 +38,13 @@ public static class Operadores
 
     }
 
-    public static void Operador2(string query)
+    public static void Operador2(string[] palabras_query)
     {
-        //separa las palabras de la query y solo del deja el ^ con las palabras
-        string[] palabras_query = query.ToLower().Split(new char[21] {' ','!','~','*',';','/','#','[',']','{','}','¡','¿','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries);
         string[] word_operador_2=new string [palabras_query.Length];
         int count=0;
 
-        for(int i =0;i < palabras_query.Length;i++){
-
+        for(int i =0;i < palabras_query.Length;i++)
+        {
             if(palabras_query[i][0]=='^'){
                 //construye las palabras q no deben aparecer en los documentos quitando el caracter ^
                 palabras_query[i]=Words.ConstWord(palabras_query[i],false);
@@ -72,15 +68,15 @@ public static class Operadores
                         count++;
                     }
                 }
-
             }
-
         }
         //defino las palabras q contiene el operador !
-        if( count != 0 ){
+        if( count != 0 )
+        {
             Moogle.words_operador_2 = word_operador_2 [ 0 .. count ];
         }
-        else{
+        else
+        {
             Moogle.operador_2 = false;
         }
     }
@@ -131,10 +127,8 @@ public static class Operadores
         }
     }
 
-    public static void Operador4(string query)
+    public static void Operador4(string[] palabras_query)
     {
-        //separo las palabras de la query y solo dejo el operador * con las palabras
-        string[] palabras_query = query.ToLower().Split(new char[21] {' ','!','^','~',';','/','#','[',']','{','}','¡','¿','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries);
         Tuple<string,int>[] word_operador_4 = new Tuple<string,int>[palabras_query.Length];
         int count=0;
         int count_operador;

@@ -10,7 +10,6 @@ public static class Preprocesamiento
     public static Dictionary<string,int> Diccionario{get;private set;}
     public static float[,] TF_IDF_vector{get;private set;}
     public static float[] IDF_vector{get;private set;}
-    public static float[] Sqrt_Document_score{get; private set;}
     public static Document[] Doc_{get;private set;}
 
     public static void CargarArchivos()
@@ -20,23 +19,23 @@ public static class Preprocesamiento
         CargarDocumentos();
         CargarDiccionario();
         CargarTF_IDF();
-        CargarSqrtScore();
+        Sugerencia.PalabrasSugeridas=new Dictionary<string, string>();
 
         //creando todos los documentos
         Doc_ = new Document[Direction.Length];
-        for(int i=0;i<Direction.Length;i++){
-            Doc_[i] = new Document(Titulos[i],Documents[i],words_document[i][0 .. (words_document[i].Length)],"",CargarSnippet(Documents[i]),CrearVector(i),Sqrt_Document_score[i],0);
+        for(int i=0;i<Direction.Length;i++)
+        {                                                                                                      
+            Doc_[i] = new Document(Titulos[i],Documents[i],words_document[i][0 .. (words_document[i].Length)],"",CrearVector(i),0);
         }
-
     }
     //itera por el array de direcciones las divide y se queda con el titulo de cada documento
     public static void CargarTitulos()
     {
-        Titulos=new string[Direction.Length];
+        Titulos = new string[Direction.Length];
 
-        for(int i =0; i < Direction.Length; i++){
-            string[] aux=Direction[i].Split('/');
-            Titulos[i]=aux[aux.Length-1];
+        for(int i =0; i < Direction.Length; i++)
+        {
+            Titulos[i] = Path.GetFileNameWithoutExtension(Direction[i]);
         }
     }
     //itera por las direcciones y guarda los textos de los documentos, las palabras de cada documento por separado y las 
@@ -92,8 +91,6 @@ public static class Preprocesamiento
                     map[Diccionario[pal_dic]]=true;
                 }
             }
-
-  
         }
         //calculando el vector IDF   
         for(int i = 0; i < IDF_vector.Length;i++)
@@ -102,41 +99,7 @@ public static class Preprocesamiento
         }
     }
 
-    public static void CargarSqrtScore()
-    {
-        Sqrt_Document_score = new float[TF_IDF_vector.GetLength(0)];
-
-        for(int i=0; i<TF_IDF_vector.GetLength(0);i++)
-        {
-            for(int j=0;j<TF_IDF_vector.GetLength(1);j++)
-            {
-                //calcula los TF-IDF de todos los documentos
-                TF_IDF_vector[i,j]= IDF_vector[j] * TF_IDF_vector[i,j];
-                Sqrt_Document_score[i] += (float)Math.Pow(TF_IDF_vector[i,j],2);
-
-            }
-        }
-    }
-
-    public static Snippet[] CargarSnippet(string text)
-    {
-        List<string> snippet=new List<string>();
-
-        for(int i=0,j=200;j<text.Length;i+=200,j+=200)
-        {
-            snippet.Add(text[i .. j]);
-        }
-
-        Snippet[] result=new Snippet[snippet.Count];
-        string[] aux;
-        for(int i=0;i<result.Length;i++)
-        {
-            aux=CargarPalabrasSnippet(snippet[i]);
-            result[i]=new Snippet(snippet[i],aux);
-        }
-        return result;
-    }
-
+    //separa el vector tf-idf del documento de la matriz TF-IDF
     public static float[] CrearVector(int i){
 
         float[] result=new float[TF_IDF_vector.GetLength(1)];
@@ -149,20 +112,5 @@ public static class Preprocesamiento
         }
 
         return result;
-    }
-
-    public static string[] CargarPalabrasSnippet(string text)
-    {
-        List<string> palabras=new List<string>();
-        palabras.AddRange(Words.CleanWords(text.ToLower().Split(new char[22] {' ',';','^','/','#','[',']','~','{','}','*','¡','!','¿','$',')','?',',',':','(','.','\n'}, StringSplitOptions.RemoveEmptyEntries),false));
-        if(!words.Contains(palabras[0]))
-        {
-            palabras.Remove(palabras[0]);
-        }
-        if(!words.Contains(palabras[palabras.Count-1]))
-        {
-            palabras.Remove(palabras[palabras.Count-1]);
-        }
-        return palabras.ToArray();
     }
 }
